@@ -26,6 +26,7 @@ namespace caffe {
 template <typename Dtype>
 class Layer {
  public:
+  int taskiter;
   /**
    * You should not implement your own constructor. Any set up code should go
    * to SetUp(), where the dimensions of the bottom blobs are provided to the

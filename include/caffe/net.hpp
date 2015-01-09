@@ -184,6 +184,7 @@ class Net {
       const string& layer_name);
 
   vector<int> layer_types_;
+  int taskiter;
  protected:
   // Helpers for Init.
   /// @brief Append a new input or top blob to the net.

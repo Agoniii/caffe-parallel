@@ -119,7 +119,7 @@ void BasePrefetchingDataLayer<Dtype>::CreatePrefetchThread() {
 
 template <typename Dtype>
 void BasePrefetchingDataLayer<Dtype>::JoinPrefetchThread() {
-  if(rank==0)CHECK(WaitForInternalThreadToExit()) << "Thread joining failed";
+  CHECK(WaitForInternalThreadToExit()) << "Thread joining failed";
 }
 
 template <typename Dtype>

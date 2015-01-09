@@ -24,12 +24,13 @@ namespace caffe {
 
 template <typename Dtype>
 DataLayer<Dtype>::~DataLayer<Dtype>() {
-if(rank==0)  this->JoinPrefetchThread();
   // clean up the database resources
   switch (this->layer_param_.data_param().backend()) {
   case DataParameter_DB_LEVELDB:
+if(rank==0)  this->JoinPrefetchThread();
     break;  // do nothing
   case DataParameter_DB_LMDB:
+this->JoinPrefetchThread();
     mdb_cursor_close(mdb_cursor_);
     mdb_close(mdb_env_, mdb_dbi_);
     mdb_txn_abort(mdb_txn_);
@@ -185,7 +186,25 @@ void DataLayer<Dtype>::InternalThreadEntry() {
     top_label = this->prefetch_label_.mutable_cpu_data();
   }
   const int batch_size = this->layer_param_.data_param().batch_size();
-
+#if 1
+if(Caffe::phase() == Caffe::TRAIN){
+  if(this->layer_param_.data_param().backend() == DataParameter_DB_LMDB){
+      unsigned int itr;
+      itr = this->taskiter * batch_size;
+      CHECK_EQ(mdb_cursor_get(mdb_cursor_, &mdb_key_,
+                &mdb_value_, MDB_FIRST), MDB_SUCCESS);
+      while(itr-- > 0){
+      if (mdb_cursor_get(mdb_cursor_, &mdb_key_,
+              &mdb_value_, MDB_NEXT) != MDB_SUCCESS) {
+        // We have reached the end. Restart from the first.
+        DLOG(INFO) << "Restarting data prefetching from start.";
+        CHECK_EQ(mdb_cursor_get(mdb_cursor_, &mdb_key_,
+                &mdb_value_, MDB_FIRST), MDB_SUCCESS);
+      }
+	}
+  }
+}
+#endif
   for (int item_id = 0; item_id < batch_size; ++item_id) {
     // get a blob
     switch (this->layer_param_.data_param().backend()) {

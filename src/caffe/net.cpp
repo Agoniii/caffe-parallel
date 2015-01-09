@@ -506,6 +506,7 @@ Dtype Net<Dtype>::ForwardFromTo(int start, int end) {
   Dtype loss = 0;
   for (int i = start; i <= end; ++i) {
     // LOG(ERROR) << "Forwarding " << layer_names_[i];
+    layers_[i]->taskiter = taskiter;
     layers_[i]->Reshape(bottom_vecs_[i], &top_vecs_[i]);
     Dtype layer_loss = layers_[i]->Forward(bottom_vecs_[i], &top_vecs_[i]);
     loss += layer_loss;
@@ -549,11 +550,11 @@ const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilled(Dtype* loss) {
 	}
 	return net_output_blobs_;
 }
-
 template <typename Dtype>
 const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilledTest(Dtype* loss) {
   if (loss != NULL) {
 	layers_[0]->Reshape(bottom_vecs_[0], &top_vecs_[0]);
+	if(Caffe::phase() == Caffe::TRAIN)layers_[0]->taskiter = taskiter;
 	Dtype layer_loss = layers_[0]->ForwardTest(bottom_vecs_[0], &top_vecs_[0]);//Only for data layer
 	*loss = ForwardFromTo(1, layers_.size() - 1);
 	*loss += layer_loss;

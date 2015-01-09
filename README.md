@@ -19,6 +19,11 @@ Shen,Bo (Inspur) shenbo@inspur.com ; Wang,Yajuan (Inspur) wangyjbj@inspur.com
 
 Changelog:
 ============================
+Ver 0.2(20150109):  
+ Support LMDB now.(tested mnist)  
+ Fixed some bugs.  
+
+
 Ver 0.1(20141231):
 
  create project(forked from BVLC/caffe 20141223).
@@ -28,11 +33,11 @@ possible to improve it and happy new year!
 
 TODO List:
 ============================
-1.support <b>LMDB</b>
+<del>1.support <b>LMDB</b></del>  
 
-2.performance optimization
+2.performance optimization  
 
-3.support Intel® Xeon Phi™Coprocessors
+3.support Intel® Xeon Phi™Coprocessors  
 
 How to run it
 ============================
@@ -64,7 +69,7 @@ CPU-only Caffe: for cold-brewed CPU-only Caffe uncomment the CPU_ONLY := 1 flag
 in Makefile.config to configure and build Caffe without CUDA. This is helpful for 
 cloud or cluster deployment.  
 
-<b>2.Compile</b>
+<b>2.Compile</b>  
 a. Copy Makefile.config.example and rename Makefile.config  
 b. edit Makefile.config:   
    i. If you compile with NVIDIA cuDNN acceleration, you should uncomment the 

@@ -417,7 +417,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 		}
 		TestAll();
 		sleep(WAIT_SEC);
-		for(int i=0;i<msize-1;++i){
+		for(int i=0;i<upSum;++i){
 			pthread_cancel(threadc[i]);
 		}
 		pthread_cancel(threads);
@@ -430,11 +430,9 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 			status.MPI_ERROR=0;
 			caffe_mpi_recv(&iter_,1,MPI_INT,0,TAG_ITER,MPI_COMM_WORLD,&status);
 			if(iter_== -1)break;
-//////LOG(INFO)<<"Start "<<iter_;
+			net_->taskiter = iter_;
 			Dtype loss = net_->ForwardBackward(bottom_vec);
-//////LOG(INFO)<<"End "<<iter_;
 			ComputeUpdateValueClient();
-//////LOG(INFO)<<"Update "<<iter_;
 			memset(&status,0,sizeof(status));
 			vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
 			for (int param_id = 0; param_id < net_params.size(); ++param_id) {
@@ -449,7 +447,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 
 			if (param_.test_interval() && iter_ % param_.test_interval() == 0
 					&& (iter_ > 0 || param_.test_initialization())) {
-		//		TestAll();//TODO need support lmdb
+			//	TestAll();//TODO need support lmdb
 			}
 
 			const bool display = param_.display() && iter_ % param_.display() == 0;
@@ -490,6 +488,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 		// display the loss, which is computed in the forward pass.
 		if (param_.display() && iter_ % param_.display() == 0) {
 			Dtype loss;
+			net_->taskiter=0;
 			net_->ForwardTest(bottom_vec, &loss);
 			LOG(INFO) << "Iteration " << iter_ << ", loss = " << loss;
 		}
