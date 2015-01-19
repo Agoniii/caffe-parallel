@@ -51,13 +51,16 @@ void BasePrefetchingDataLayer<Dtype>::Forward_gpu(
 	case DataParameter_DB_LEVELDB:
 	{
 	MPI_Status status;
+	status.MPI_ERROR=0;
 	caffe_mpi_recv<Dtype>((*top)[0]->mutable_cpu_data(),prefetch_data_.count(),
                 0,TAG_DATA_OUT,MPI_COMM_WORLD,&status);
+	DLOG(INFO)<<"Recv Dataout status "<<status.MPI_ERROR;
 	caffe_copy(prefetch_data_.count(),(*top)[0]->mutable_cpu_data(),(*top)[0]->mutable_gpu_data());//TODO Is this code needed?
 	if (this->output_labels_) {
 		caffe_mpi_recv<Dtype>((*top)[1]->mutable_cpu_data(),prefetch_label_.count(),
                 0,TAG_DATA_OUT_IF,MPI_COMM_WORLD,&status);
-	caffe_copy(prefetch_data_.count(),(*top)[1]->mutable_cpu_data(),(*top)[1]->mutable_gpu_data());//TODO Is this code needed?
+		DLOG(INFO)<<"Recv Dataout status "<<status.MPI_ERROR;
+	caffe_copy(prefetch_label_.count(),(*top)[1]->mutable_cpu_data(),(*top)[1]->mutable_gpu_data());//TODO Is this code needed?
 	}
 	}
 	break;

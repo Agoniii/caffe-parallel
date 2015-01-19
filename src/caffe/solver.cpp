@@ -18,7 +18,7 @@ sem_t semQ;//wait program finish
 int taskS1;
 int upNum=0;
 int upSum;
-void * tempData=NULL;//like float/double
+//void * tempData=NULL;//like float/double  //test del tempData20150113
 void * tempDiff=NULL;//like float/double
 int *flagCC=NULL;
 pthread_mutex_t mutexFin;//=PTHREAD_MUTEX_INITIALIZER;//check and wait program finish
@@ -64,7 +64,7 @@ void Solver<Dtype>::ComputeValueServer(){
         ComputeUpdateValueServerThread();
 	++itest;
         if(itest % param_.test_interval() ==0)
-                TestAll();//FIXME only for leveldb
+                TestAll();
 	upNum=0;
 }
 template <typename Dtype>
@@ -124,11 +124,12 @@ void SGDSolver<Dtype>::ComputeUpdateValueServerThread(){
 	this->net_->Update();
 	for(int i=0;i<upSum;++i){
 		if(flagCC[i]==1){
-			Dtype **data = ((Dtype***)tempData)[i];
+			//Dtype **data = ((Dtype***)tempData)[i]; //test del tempData20150113
+			Dtype **diff = ((Dtype***)tempDiff)[i];
 			for(int param_id = 0; param_id < net_params.size(); ++param_id){
 				caffe_copy(net_params[param_id]->count(),
 						net_params[param_id]->cpu_data(),
-						&data[param_id][0]);
+						&diff[param_id][0]);
 			}
 		}
 	}
@@ -166,9 +167,10 @@ void Solver<Dtype>::ComputeValueClient(int tid){
 		}
 		flagCC[tid]=0;
 	}
-	Dtype **data = ((Dtype***)tempData)[tid];
+	//Dtype **data = ((Dtype***)tempData)[tid]; //test del tempData20150113
+	Dtype **diff = ((Dtype***)tempDiff)[tid];
 	for (int param_id = 0; param_id < net_params.size(); ++param_id) {
-		caffe_mpi_send<Dtype>(data[param_id],net_params[param_id]->count(),
+		caffe_mpi_send<Dtype>(diff[param_id],net_params[param_id]->count(),
 				mpi_source,TAG_NET_OUT,MPI_COMM_WORLD);
 	}
 	idleQ.push(mpi_source);
@@ -196,7 +198,7 @@ SGDSolver<Dtype>::~SGDSolver(){
 //      delete[] this->mpibuf;
 //      //
       delete [] flagCC;
-//      //TODO delete tempData=new Dtype**[upSum];
+//      // delete tempData=new Dtype**[upSum];
 //      //TODO delete tempDiff=new Dtype**[upSum];
             }
 template <typename Dtype>
@@ -367,13 +369,13 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 		taskS1=upSum;
 		flagCC=new int[upSum];
 		memset(flagCC,0,sizeof(int)*upSum);
-		tempData=new Dtype**[upSum];
+		//tempData=new Dtype**[upSum];  //test del tempData20150113
 		tempDiff=new Dtype**[upSum];
 		for(int i=0;i<upSum;++i){
-			((Dtype***)tempData)[i]=new Dtype*[net_params.size()];
+			//((Dtype***)tempData)[i]=new Dtype*[net_params.size()]; //test del tempData20150113
 			((Dtype***)tempDiff)[i]=new Dtype*[net_params.size()];
 			for(int j=0;j<net_params.size();++j){
-				((Dtype***)tempData)[i][j]=new Dtype[net_params[j]->count()];
+			//	((Dtype***)tempData)[i][j]=new Dtype[net_params[j]->count()]; //test del tempData20150113
 				((Dtype***)tempDiff)[i][j]=new Dtype[net_params[j]->count()];
 			}
 		}
@@ -445,10 +447,10 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 				Snapshot();//TODO
 			}
 
-			if (param_.test_interval() && iter_ % param_.test_interval() == 0
-					&& (iter_ > 0 || param_.test_initialization())) {
-			//	TestAll();//TODO need support lmdb
-			}
+			//if (param_.test_interval() && iter_ % param_.test_interval() == 0
+			//		&& (iter_ > 0 || param_.test_initialization())) {
+			//	TestAll();
+			//}
 
 			const bool display = param_.display() && iter_ % param_.display() == 0;
 			net_->set_debug_info(display && param_.debug_info());
@@ -523,7 +525,7 @@ void Solver<Dtype>::Test(const int test_net_id) {
   for (int i = 0; i < param_.test_iter(test_net_id); ++i) {
     Dtype iter_loss;
     const vector<Blob<Dtype>*>& result =
-        test_net->ForwardTest(bottom_vec, &iter_loss);//FIXME only for cifar10
+        test_net->ForwardTest(bottom_vec, &iter_loss);
     if (param_.test_compute_loss()) {
       loss += iter_loss;
     }

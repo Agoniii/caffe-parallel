@@ -88,8 +88,8 @@ INCLUDE_DIRS, LIBRARY_DIRS if you need.
 c. Modify Makefile:  
    i. Add -DMPICH_IGNORE_CXX_SEEK flag to COMMON_FLAGS in "# Debugging" :   
 COMMON_FLAGS += -DNDEBUG -O2 -DMPICH_IGNORE_CXX_SEEK  
-  ii. Add -mt_mpi flag to CXXFLAGS in "# Complete build flags."  
- iii. Add -mt_mpi flag to LINKFLAGS in "# Complete build flags."  
+  ii. Add -mt_mpi flag to CXXFLAGS in "# Complete build flags."(for Intel mpi)  
+ iii. Add -mt_mpi flag to LINKFLAGS in "# Complete build flags."(for Intel mpi)  
 d. make it.  
   
 <b>3.Run and Test</b>  
@@ -97,7 +97,8 @@ a. cifar10
    i. Run data/cifar10/get_cifar10.sh to get cifar10 data.  
   ii. Run examples/cifar10/create_cifar10.sh to conver raw data to leveldb format.  
  iii. Run examples/cifar10/mpi_train_quick.sh to train the net. You can modify the   
-"-n 16" to set new process number where 16 is the number of parallel processes,   
+"-n 16" to set new process number where 16 is the number of parallel processes,  
+(if you use GPUs, the process number is m+1, m is GPU number)  
 the "-host node11" is the node name in mpi_train_quick.sh script.  
 b. mnist  
    i. Run data/mnist/get_mnist.sh to get mnist data.  
@@ -105,6 +106,7 @@ b. mnist
  iii. Run examples/mnist/mpi_train_lenet.sh to train the net. You can modify the 
 "-n 16" to set new process number, the "-host node11" is the node name in 
 mpi_train_quick.sh script.  
+(if you use GPUs, the process number is m+1, m is GPU number)  
   iv. 
 Acknowledgements
 ============================
