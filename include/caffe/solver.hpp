@@ -66,6 +66,9 @@ class Solver {
 
   int mpi_source;
   int rank;
+  MPI_Datatype mpiTypeDiff;//MPI root
+  MPI_Datatype mpiTypeCpuDiff, mpiTypeCpuData;//MPI clients
+
 
   DISABLE_COPY_AND_ASSIGN(Solver);
 };

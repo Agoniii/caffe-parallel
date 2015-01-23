@@ -60,13 +60,13 @@ template <typename Dtype>
 		}
 	}
 template <typename Dtype>
-void Solver<Dtype>::ComputeValueServer(){
-        ComputeUpdateValueServerThread();
-	++itest;
-        if(itest % param_.test_interval() ==0)
-                TestAll();
-	upNum=0;
-}
+	void Solver<Dtype>::ComputeValueServer(){
+		ComputeUpdateValueServerThread();
+		++itest;
+		if(itest % param_.test_interval() ==0)
+			TestAll();
+		upNum=0;
+	}
 template <typename Dtype>
 void SGDSolver<Dtype>::ComputeUpdateValueServerThread(){
 	vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
@@ -158,7 +158,6 @@ template <typename Dtype>
 void Solver<Dtype>::ComputeValueClient(int tid){
 	int mpi_source;
 	ComputeUpdateValueClientThread(mpi_source,tid);
-	vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
 	{
 		lockmutex lockm(&mutexData);
 		while(upNum!=0){
@@ -169,10 +168,15 @@ void Solver<Dtype>::ComputeValueClient(int tid){
 	}
 	//Dtype **data = ((Dtype***)tempData)[tid]; //test del tempData20150113
 	Dtype **diff = ((Dtype***)tempDiff)[tid];
+#if 0
+	vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
 	for (int param_id = 0; param_id < net_params.size(); ++param_id) {
 		caffe_mpi_send<Dtype>(diff[param_id],net_params[param_id]->count(),
 				mpi_source,TAG_NET_OUT,MPI_COMM_WORLD);
 	}
+#else
+	caffe_mpi_send(diff[0],1,mpiTypeDiff,mpi_source,TAG_NET_OUT,MPI_COMM_WORLD);
+#endif
 	idleQ.push(mpi_source);
 }
 template <typename Dtype>
@@ -195,12 +199,25 @@ Solver<Dtype>::Solver(const string& param_file)
 
 template <typename Dtype>
 SGDSolver<Dtype>::~SGDSolver(){
-//      delete[] this->mpibuf;
-//      //
-      delete [] flagCC;
-//      // delete tempData=new Dtype**[upSum];
-//      //TODO delete tempDiff=new Dtype**[upSum];
-            }
+	delete [] flagCC;
+#if 0
+	if(this->rank==0){
+		tempDiff=new Dtype**[upSum];
+		for(int i=0;i<upSum;++i){
+			delete[] ((Dtype***)tempDiff)[i][0];
+			delete[] ((Dtype***)tempDiff)[i];
+		}
+		delete[] (Dtype***)tempDiff;
+		if(this->mpiTypeDiff != MPI_DATATYPE_NULL)
+			MPI_Type_free(&this->mpiTypeDiff);
+	}else{
+		if(this->mpiTypeCpuDiff != MPI_DATATYPE_NULL)
+			MPI_Type_free(&this->mpiTypeCpuDiff);
+		if(this->mpiTypeCpuData != MPI_DATATYPE_NULL)
+			MPI_Type_free(&this->mpiTypeCpuData);
+	}
+#endif
+}
 template <typename Dtype>
 void Solver<Dtype>::Init(const SolverParameter& param) {
   LOG(INFO) << "Initializing solver from parameters: " << std::endl
@@ -215,6 +232,9 @@ void Solver<Dtype>::Init(const SolverParameter& param) {
   int size;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
   MPI_Comm_size (MPI_COMM_WORLD, &size);
+	mpiTypeDiff = MPI_DATATYPE_NULL;
+	mpiTypeCpuDiff = MPI_DATATYPE_NULL;
+	mpiTypeCpuData = MPI_DATATYPE_NULL;
   if(rank==0){
 	  if(idleQ.empty()){
 		  for(int i=1;i<size;++i){
@@ -356,13 +376,14 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 	// For a network that is trained by the solver, no bottom or top vecs
 	// should be given, and we will just provide dummy vecs.
 	vector<Blob<Dtype>*> bottom_vec;
+	vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
 	if(rank==0){
 		pthread_mutex_init(&mutexFin,NULL);
 		pthread_cond_init(&condFin,NULL);
 		sem_init(&semQ,0,idleQ.size());
 		taskSum.add(param_.max_iter()-iter_);
-		vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
 		int msize;
+		int tNetCount=0;
 		MPI_Comm_size (MPI_COMM_WORLD, &msize);
 		upSum= msize -1 ;
 		taskS.add(taskSum.getValue());
@@ -371,14 +392,45 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 		memset(flagCC,0,sizeof(int)*upSum);
 		//tempData=new Dtype**[upSum];  //test del tempData20150113
 		tempDiff=new Dtype**[upSum];
+		for(int j=0;j<net_params.size();++j){
+			tNetCount += net_params[j]->count();
+		}
 		for(int i=0;i<upSum;++i){
 			//((Dtype***)tempData)[i]=new Dtype*[net_params.size()]; //test del tempData20150113
 			((Dtype***)tempDiff)[i]=new Dtype*[net_params.size()];
+#if 1
+			((Dtype***)tempDiff)[i][0] = new Dtype[tNetCount];
+			for(int j=1;j<net_params.size();++j){
+				((Dtype***)tempDiff)[i][j]= ((Dtype***)tempDiff)[i][j-1]+net_params[j-1]->count();
+			}
+#else
 			for(int j=0;j<net_params.size();++j){
-			//	((Dtype***)tempData)[i][j]=new Dtype[net_params[j]->count()]; //test del tempData20150113
 				((Dtype***)tempDiff)[i][j]=new Dtype[net_params[j]->count()];
 			}
+#endif
 		}
+#if 1	
+		MPI_Datatype *netDataType=new MPI_Datatype[net_params.size()];
+		int *blocklen = new int[net_params.size()];
+		MPI_Aint *displacement = new MPI_Aint[net_params.size()];
+		Dtype **diff = ((Dtype***)tempDiff)[0];
+		for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+			blocklen[param_id]=net_params[param_id]->count();
+			if(typeid(Dtype)==typeid(float))
+				netDataType[param_id] = MPI_FLOAT;
+			else if(typeid(Dtype)==typeid(double))
+				netDataType[param_id] = MPI_DOUBLE;
+			else
+				LOG(FATAL)<<"This datetype is not support!"<<typeid(Dtype).name();
+			displacement[param_id] = (char*) diff[param_id]- (char*) diff[0];
+		}
+		MPI_Type_struct(net_params.size(),blocklen,displacement,netDataType,&mpiTypeDiff);
+		MPI_Type_commit(&mpiTypeDiff);
+		delete[] netDataType;
+		delete[] blocklen;
+		delete[] displacement;
+
+#endif
 		pthread_t threads;
 		pthread_t *threadc=new pthread_t[msize-1];
 		tprama pramas;
@@ -427,6 +479,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 		delete[] pramac;
 		LOG(INFO)<<"DESTROY "<< (pthread_mutex_destroy(&mutexData));
 	}else{
+		int flagType=0;
 		while(true){
 			MPI_Status status;
 			status.MPI_ERROR=0;
@@ -434,13 +487,47 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 			if(iter_== -1)break;
 			net_->taskiter = iter_;
 			Dtype loss = net_->ForwardBackward(bottom_vec);
+			if(flagType==0){
+				MPI_Datatype *netDataType=new MPI_Datatype[net_params.size()];
+				int *blocklen = new int[net_params.size()];
+				MPI_Aint *displacement = new MPI_Aint[net_params.size()];
+				for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+					blocklen[param_id]=net_params[param_id]->count();
+					if(typeid(Dtype)==typeid(float))
+						netDataType[param_id] = MPI_FLOAT;
+					else if(typeid(Dtype)==typeid(double))
+						netDataType[param_id] = MPI_DOUBLE;
+					else
+						LOG(FATAL)<<"This datetype is not support!"<<typeid(Dtype).name();
+					displacement[param_id] = (char*)(net_params[param_id]->mutable_cpu_diff()) - (char*)(net_params[0]->mutable_cpu_diff());
+				}
+				MPI_Type_struct(net_params.size(),blocklen,displacement,netDataType,&mpiTypeCpuDiff);
+				MPI_Type_commit(&mpiTypeCpuDiff);
+				for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+					displacement[param_id] = (char*)(net_params[param_id]->mutable_cpu_data()) - (char*)(net_params[0]->mutable_cpu_data());
+				}
+				MPI_Type_struct(net_params.size(),blocklen,displacement,netDataType,&mpiTypeCpuData);
+				MPI_Type_commit(&mpiTypeCpuData);
+				delete[] netDataType;
+				delete[] blocklen;
+				delete[] displacement;
+				flagType=1;
+			}
 			ComputeUpdateValueClient();
 			memset(&status,0,sizeof(status));
 			vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
+#if 0
 			for (int param_id = 0; param_id < net_params.size(); ++param_id) {
 				caffe_mpi_recv<Dtype>(net_params[param_id]->mutable_cpu_data(),net_params[param_id]->count(),
 						0,TAG_NET_OUT,MPI_COMM_WORLD,&status);
 			}
+#else
+			for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+				net_params[param_id]->mutable_cpu_data();
+			}
+			caffe_mpi_recv(net_params[0]->mutable_cpu_data(),1,
+					mpiTypeCpuData,0,TAG_NET_OUT,MPI_COMM_WORLD,&status);
+#endif
 			// Save a snapshot if needed.
 			if (param_.snapshot() && iter_ > start_iter &&
 					iter_ % param_.snapshot() == 0) {
@@ -662,18 +749,25 @@ void SGDSolver<Dtype>::PreSolve() {
 template <typename Dtype>
 void SGDSolver<Dtype>::ComputeUpdateValueClient() {
   vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
-Dtype rate = GetLearningRate();
+  Dtype rate = GetLearningRate();
   if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
     LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
   }
-for (int param_id = 0; param_id < net_params.size(); ++param_id) {
-if(param_id==0)
+#if 0
+  for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+    if(param_id==0)
       caffe_mpi_send<Dtype>(net_params[param_id]->mutable_cpu_diff(),net_params[param_id]->count(),
-        0,TAG_UPDATE_1,MPI_COMM_WORLD);
-else
-        caffe_mpi_send<Dtype>(net_params[param_id]->mutable_cpu_diff(),net_params[param_id]->count(),
-        0,TAG_UPDATE,MPI_COMM_WORLD);
-}
+	  0,TAG_UPDATE_1,MPI_COMM_WORLD);
+    else
+      caffe_mpi_send<Dtype>(net_params[param_id]->mutable_cpu_diff(),net_params[param_id]->count(),
+	  0,TAG_UPDATE,MPI_COMM_WORLD);
+  }
+#else
+  for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+		net_params[param_id]->mutable_cpu_diff();
+  }
+  caffe_mpi_send(net_params[0]->mutable_cpu_diff(),1,this->mpiTypeCpuDiff,0,TAG_UPDATE,MPI_COMM_WORLD);
+#endif
 }
 
 template <typename Dtype>
@@ -1038,9 +1132,11 @@ void AdaGradSolver<Dtype>::ComputeUpdateValue() {
 }
 template <typename Dtype>
 void SGDSolver<Dtype>::GetValue(int &mpi_source,const int tid) {
-        vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
         MPI_Status status;
+
         Dtype **diff = ((Dtype***)tempDiff)[tid];
+#if 0
+        vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
 	for (int param_id = 0; param_id < net_params.size(); ++param_id) {
                 memset(&status,0,sizeof(status));
                 if(param_id==0){
@@ -1052,6 +1148,24 @@ void SGDSolver<Dtype>::GetValue(int &mpi_source,const int tid) {
                                         mpi_source,TAG_UPDATE,MPI_COMM_WORLD,&status);
                 }
         }
+#else
+	caffe_mpi_recv(&diff[0][0],1,this->mpiTypeDiff,MPI_ANY_SOURCE,TAG_UPDATE,MPI_COMM_WORLD,&status);
+	mpi_source=status.MPI_SOURCE;
+#endif
+#if 0
+	int packsize,bufsize,position;
+	char* packbuf;
+	for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+		MPI_Pack(net_params[param_id]->mutable_cpu_data(),
+			net_params[param_id]->count(),
+			MPI_FLOAT,packbuf,bufsize,&packsize,MPI_COMM_WORLD);
+	}
+	for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+		MPI_Unpack(packbuf,packsize,&position,net_params[param_id]->mutable_cpu_data(),
+			net_params[param_id]->count(),MPI_FLOAT,MPI_COMM_WORLD);
+	}
+#endif
+	
 {
         lockmutex lockm(&mutexData);
         flagCC[tid] = 1;
