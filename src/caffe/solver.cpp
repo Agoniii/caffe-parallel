@@ -200,9 +200,7 @@ Solver<Dtype>::Solver(const string& param_file)
 template <typename Dtype>
 SGDSolver<Dtype>::~SGDSolver(){
 	delete [] flagCC;
-#if 0
 	if(this->rank==0){
-		tempDiff=new Dtype**[upSum];
 		for(int i=0;i<upSum;++i){
 			delete[] ((Dtype***)tempDiff)[i][0];
 			delete[] ((Dtype***)tempDiff)[i];
@@ -216,7 +214,6 @@ SGDSolver<Dtype>::~SGDSolver(){
 		if(this->mpiTypeCpuData != MPI_DATATYPE_NULL)
 			MPI_Type_free(&this->mpiTypeCpuData);
 	}
-#endif
 }
 template <typename Dtype>
 void Solver<Dtype>::Init(const SolverParameter& param) {
