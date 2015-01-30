@@ -28,6 +28,7 @@ pthread_cond_t condUp=PTHREAD_COND_INITIALIZER;//wait update net paramater in se
 pthread_mutex_t mutexCtrl=PTHREAD_MUTEX_INITIALIZER;//when update net paramaters finished, broadcast to send data to MPI clients
 pthread_cond_t condCtrl=PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutexData=PTHREAD_MUTEX_INITIALIZER;//update data and diff
+pthread_mutex_t mutexQ=PTHREAD_MUTEX_INITIALIZER;//update idleQ
 atomInt taskSum,taskS;
 int itest=0;
 namespace caffe {
@@ -177,7 +178,9 @@ void Solver<Dtype>::ComputeValueClient(int tid){
 #else
 	caffe_mpi_send(diff[0],1,mpiTypeDiff,mpi_source,TAG_NET_OUT,MPI_COMM_WORLD);
 #endif
+	pthread_mutex_lock(&mutexQ);
 	idleQ.push(mpi_source);
+	pthread_mutex_unlock(&mutexQ);
 }
 template <typename Dtype>
 void SGDSolver<Dtype>::ComputeUpdateValueClientThread(int& mpi_source,int tid){
@@ -443,13 +446,18 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 						&pramac[i])) << "Pthread(solve) execution failed.";
 		}
 
+		int qfront;
 		for (; iter_ < param_.max_iter(); ++iter_) {
 			sem_wait(&semQ);
+			pthread_mutex_lock(&mutexQ);
 			if(!idleQ.empty()){
-				caffe_mpi_send(&iter_,1,MPI_INT,idleQ.front(),TAG_ITER,MPI_COMM_WORLD);
-				/*Dtype loss = */net_->ForwardBackwardRoot(bottom_vec,idleQ.front());
+				qfront=idleQ.front();
 				idleQ.pop();
+				pthread_mutex_unlock(&mutexQ);
+				caffe_mpi_send(&iter_,1,MPI_INT,qfront,TAG_ITER,MPI_COMM_WORLD);
+				/*Dtype loss = */net_->ForwardBackwardRoot(bottom_vec,qfront);
 			}else{
+				pthread_mutex_unlock(&mutexQ);
 				LOG(FATAL)<<"ERROR! idleQ is empty!";
 			}
 		}
@@ -750,6 +758,7 @@ void SGDSolver<Dtype>::ComputeUpdateValueClient() {
   if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
     LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
   }
+#if 1
 #if 0
   for (int param_id = 0; param_id < net_params.size(); ++param_id) {
     if(param_id==0)
@@ -759,6 +768,7 @@ void SGDSolver<Dtype>::ComputeUpdateValueClient() {
       caffe_mpi_send<Dtype>(net_params[param_id]->mutable_cpu_diff(),net_params[param_id]->count(),
 	  0,TAG_UPDATE,MPI_COMM_WORLD);
   }
+#endif
 #else
   for (int param_id = 0; param_id < net_params.size(); ++param_id) {
 		net_params[param_id]->mutable_cpu_diff();
@@ -1132,11 +1142,13 @@ void SGDSolver<Dtype>::GetValue(int &mpi_source,const int tid) {
         MPI_Status status;
 
         Dtype **diff = ((Dtype***)tempDiff)[tid];
-#if 0
+#if 1
         vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
-	for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+	//for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+	for (int param_id = net_params.size()-1; param_id >= 0; --param_id) {
                 memset(&status,0,sizeof(status));
-                if(param_id==0){
+                //if(param_id==0){
+                if(param_id==net_params.size()-1){
                         caffe_mpi_recv<Dtype>(&diff[param_id][0],net_params[param_id]->count(),
                                         MPI_ANY_SOURCE,TAG_UPDATE_1,MPI_COMM_WORLD,&status);
                         mpi_source=status.MPI_SOURCE;

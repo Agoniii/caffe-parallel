@@ -25,6 +25,13 @@ int caffe_mpi_recv(void *buf, int count,  int source, int tag,
 int caffe_mpi_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag,
                     MPI_Comm comm, MPI_Status *status);
 
+template <typename Dtype>
+int caffe_mpi_isend(void *buf, int count, int dest, int tag,
+                    MPI_Comm comm, MPI_Request *req);
+
+int caffe_mpi_isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+                    MPI_Comm comm, MPI_Request *req);
+
 }  // namespace caffe
 
 #endif  // CAFFE_UTIL_MPI_H_

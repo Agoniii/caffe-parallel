@@ -63,4 +63,21 @@ int caffe_mpi_recv(void *buf, int count, MPI_Datatype datatype, int dest, int ta
                     comm, status);
 }
 
+template <>
+int caffe_mpi_isend<float>(void *buf, int count, int dest, int tag,
+                    MPI_Comm comm, MPI_Request *req) {
+	return MPI_Isend(buf, count, MPI_FLOAT, dest, tag,comm, req);
+}
+
+template <>
+int caffe_mpi_isend<double>(void *buf, int count, int dest, int tag,
+                    MPI_Comm comm, MPI_Request *req) {
+	return MPI_Isend(buf, count, MPI_DOUBLE, dest, tag,comm, req);
+}
+
+int caffe_mpi_isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+                    MPI_Comm comm, MPI_Request *req) {
+	return MPI_Isend(buf, count, datatype, dest, tag,comm, req);
+}
+
 }  // namespace caffe

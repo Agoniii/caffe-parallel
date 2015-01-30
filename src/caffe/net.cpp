@@ -631,13 +631,25 @@ template <typename Dtype>
 void Net<Dtype>::BackwardFromTo(int start, int end) {
   CHECK_GE(end, 0);
   CHECK_LT(start, layers_.size());
+	int j = params_.size()-1;
+	MPI_Request *req=new MPI_Request[params_.size()];
   for (int i = start; i >= end; --i) {
     if (layer_need_backward_[i]) {
       layers_[i]->Backward(
           top_vecs_[i], bottom_need_backward_[i], &bottom_vecs_[i]);
       if (debug_info_) { BackwardDebugInfo(i); }
+			for(int k = 0; k < layers_[i]->blobs().size(); ++k){
+				if(j == params_.size()-1)
+					caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
+							0,TAG_UPDATE_1,MPI_COMM_WORLD,&req[j]);
+				else
+					caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
+							0,TAG_UPDATE,MPI_COMM_WORLD,&req[j]);
+				--j;
+			}
     }
   }
+  //MPI_Waitall(params_.size(),req,MPI_STATUSES_IGNORE);
 }
 
 template <typename Dtype>
