@@ -44,19 +44,23 @@ How to run it
 <b>1.Prerequisites</b>
 Caffe depends on several software packages.
 
-    CUDA library version 6.5 (recommended), 6.0, 5.5, or 5.0 and the latest driver version for CUDA 6 or 319.* for CUDA 5 (and NOT 331.*)  
-    BLAS (provided via ATLAS, MKL, or OpenBLAS).  
-    OpenCV(need cmake >=2.8)  
-    Boost (>= 1.55, although only 1.55 and 1.56 are tested)  
-    glog  
-    gflags  
-    protobuf  
+    CUDA library version(we used 6.0) 6.5, 6.0, 5.5, or 5.0 and the latest driver version for CUDA 6 or 319.* for CUDA 5 (and NOT 331.*)  
+    BLAS (we used MKL(14.0.2.144)/ OpenBLAS(r0.2.12))(provided via ATLAS, MKL, or OpenBLAS).  
+    OpenCV (we used 2.4.9)(need cmake >=2.8)  
+    Boost (we used 1.55)(>= 1.55, although only 1.55 and 1.56 are tested)  
+    glog (we used 0.33)  
+    gflags (we used 2.1.1)  
+    protobuf (we used 2.5.0)  
     protobuf-c  
-    leveldb  
-    snappy  
-    hdf5  
-    lmdb  
+    leveldb (we used 1.15.0)  
+    snappy (we used 1.1.2)  
+    hdf5 (we used 1.8.10)  
+    lmdb   
     autoconf(>= 2.4)  
+    Compiler:
+	g++ compiler(we used 4.4.7)  
+    MPI compiler and runtime:  
+	Intel MPI (we used 14.0.2.144) / MPICH3 (we used 3.1,CC=gcc,CXX=g++)
     For the Python wrapper  
         Python 2.7, numpy (>= 1.7), boost-provided boost.python  
 
@@ -107,7 +111,18 @@ b. mnist
 "-n 16" to set new process number, the "-host node11" is the node name in 
 mpi_train_quick.sh script.  
 (if you use GPUs, the process number is m+1, m is GPU number)  
-  iv. 
+
+<b>4.Change from BVLC/caffe</b>  
+a. framework
+   i.used MPI to data-parallelism
+  ii.each MPI process run one solve
+ iii.training code is also mostly untouched
+  iv.use a parameter server(thread),every solve compute each parameter , update to parameter server(PS) , PS compute and download new parameter to solve.  
+b. class / files  
+   i.Solver/SGDSolver  
+  ii.data_layer/base_data_layer (parallel data read or distribute)  
+ iii.net (some interface and parameter update optimization)  
+  iv.other (include headfile, some interface, etc.)  
 Acknowledgements
 ============================
 The Caffe* parallel developers would like to thank QiHoo(Zhang,Gang  and Hu,Jinhui ) 
