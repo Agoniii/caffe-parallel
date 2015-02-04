@@ -58,10 +58,10 @@ Caffe depends on several software packages.
     hdf5 (we used 1.8.10)  
     lmdb   
     autoconf(>= 2.4)  
-    Compiler:
-	g++ compiler(we used 4.4.7)  
+    Compiler:  
+        g++ compiler(we used 4.4.7)  
     MPI compiler and runtime:  
-	Intel MPI (we used 14.0.2.144) / MPICH3 (we used 3.1,CC=gcc,CXX=g++)
+        Intel MPI (we used 14.0.2.144) / MPICH3 (we used 3.1,CC=gcc,CXX=g++)
     For the Python wrapper  
         Python 2.7, numpy (>= 1.7), boost-provided boost.python  
 
@@ -119,9 +119,9 @@ Change from BVLC/caffe
 ============================
 1. framework
 ----------------------------
-   a.used MPI to data-parallelism
-   b.each MPI process run one solve
-   c.training code is also mostly untouched
+   a.used MPI to data-parallelism  
+   b.each MPI process run one solve  
+   c.training code is also mostly untouched  
    d.use a parameter server(thread),every solve compute each parameter , update to parameter server(PS) , PS compute and download new parameter to solve.  
 2. class / files
 ----------------------------
