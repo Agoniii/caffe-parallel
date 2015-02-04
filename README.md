@@ -41,7 +41,8 @@ TODO List:
 
 How to run it
 ============================
-<b>1.Prerequisites</b>
+1.Prerequisites
+----------------------------
 Caffe depends on several software packages.
 
     CUDA library version(we used 6.0) 6.5, 6.0, 5.5, or 5.0 and the latest driver version for CUDA 6 or 319.* for CUDA 5 (and NOT 331.*)  
@@ -73,7 +74,8 @@ CPU-only Caffe: for cold-brewed CPU-only Caffe uncomment the CPU_ONLY := 1 flag
 in Makefile.config to configure and build Caffe without CUDA. This is helpful for 
 cloud or cluster deployment.  
 
-<b>2.Compile</b>  
+2.Compile
+----------------------------
 a. Copy Makefile.config.example and rename Makefile.config  
 b. edit Makefile.config:   
    i. If you compile with NVIDIA cuDNN acceleration, you should uncomment the 
@@ -95,34 +97,38 @@ COMMON_FLAGS += -DNDEBUG -O2 -DMPICH_IGNORE_CXX_SEEK
   ii. Add -mt_mpi flag to CXXFLAGS in "# Complete build flags."(for Intel mpi)  
  iii. Add -mt_mpi flag to LINKFLAGS in "# Complete build flags."(for Intel mpi)  
 d. make it.  
-  
-<b>3.Run and Test</b>  
-a. cifar10  
-   i. Run data/cifar10/get_cifar10.sh to get cifar10 data.  
-  ii. Run examples/cifar10/create_cifar10.sh to conver raw data to leveldb format.  
- iii. Run examples/cifar10/mpi_train_quick.sh to train the net. You can modify the   
+
+3.Run and Test
+----------------------------
+### cifar10  
+1. Run data/cifar10/get_cifar10.sh to get cifar10 data.  
+2. Run examples/cifar10/create_cifar10.sh to conver raw data to leveldb format.  
+3. Run examples/cifar10/mpi_train_quick.sh to train the net. You can modify the   
 "-n 16" to set new process number where 16 is the number of parallel processes,  
 (if you use GPUs, the process number is m+1, m is GPU number)  
 the "-host node11" is the node name in mpi_train_quick.sh script.  
-b. mnist  
-   i. Run data/mnist/get_mnist.sh to get mnist data.  
-  ii. Run examples/mnist/create_mnist.sh to conver raw data to lmdb format.  
- iii. Run examples/mnist/mpi_train_lenet.sh to train the net. You can modify the 
+### mnist  
+1. Run data/mnist/get_mnist.sh to get mnist data.  
+2. Run examples/mnist/create_mnist.sh to conver raw data to lmdb format.  
+3. Run examples/mnist/mpi_train_lenet.sh to train the net. You can modify the 
 "-n 16" to set new process number, the "-host node11" is the node name in 
 mpi_train_quick.sh script.  
 (if you use GPUs, the process number is m+1, m is GPU number)  
 
-<b>4.Change from BVLC/caffe</b>  
-a. framework
-   i.used MPI to data-parallelism
-  ii.each MPI process run one solve
- iii.training code is also mostly untouched
-  iv.use a parameter server(thread),every solve compute each parameter , update to parameter server(PS) , PS compute and download new parameter to solve.  
-b. class / files  
-   i.Solver/SGDSolver  
-  ii.data_layer/base_data_layer (parallel data read or distribute)  
- iii.net (some interface and parameter update optimization)  
-  iv.other (include headfile, some interface, etc.)  
+Change from BVLC/caffe
+============================
+1. framework
+----------------------------
+   a.used MPI to data-parallelism
+   b.each MPI process run one solve
+   c.training code is also mostly untouched
+   d.use a parameter server(thread),every solve compute each parameter , update to parameter server(PS) , PS compute and download new parameter to solve.  
+2. class / files
+----------------------------
+   a.Solver/SGDSolver  
+   b.data_layer/base_data_layer (parallel data read or distribute)  
+   c.net (some interface and parameter update optimization)  
+   d.other (include headfile, some interface, etc.)  
 Acknowledgements
 ============================
 The Caffe* parallel developers would like to thank QiHoo(Zhang,Gang  and Hu,Jinhui ) 
