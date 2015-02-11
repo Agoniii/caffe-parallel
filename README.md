@@ -37,7 +37,9 @@ TODO List:
 
 2.performance optimization  
 
-3.support Intel® Xeon Phi™Coprocessors  
+3.large-scale test
+
+4.support Intel® Xeon Phi™Coprocessors  
 
 How to run it
 ============================
@@ -132,7 +134,9 @@ Change from BVLC/caffe
    d.other (include headfile, some interface, etc.)  
 Acknowledgements
 ============================
-The Caffe* parallel developers would like to thank QiHoo(Zhang,Gang  and Hu,Jinhui ) 
+The Caffe* parallel developers would like to thank  
+QiHoo(Zhang,Gang ; Dr.Hu,Jinhui)  
+Nvidia(Dr.Simon See ; Jessy Huan)  
 for algorithm support and Inspur for guidance during Caffe* parallel development.  
 
 
