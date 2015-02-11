@@ -61,7 +61,7 @@ Caffe depends on several software packages.
     Compiler:  
         g++ compiler(we used 4.4.7)  
     MPI compiler and runtime:  
-        Intel MPI (we used 14.0.2.144) / MPICH3 (we used 3.1,CC=gcc,CXX=g++)
+        Intel MPI (we used 14.0.2.144) / MPICH3 (we used 3.1,CC=gcc,CXX=g++,--enable-threads=multiple)
     For the Python wrapper  
         Python 2.7, numpy (>= 1.7), boost-provided boost.python  
 
@@ -100,6 +100,7 @@ d. make it.
 
 3.Run and Test
 ----------------------------
+This program can run 2 processes at least.  
 ### cifar10  
 1. Run data/cifar10/get_cifar10.sh to get cifar10 data.  
 2. Run examples/cifar10/create_cifar10.sh to conver raw data to leveldb format.  
