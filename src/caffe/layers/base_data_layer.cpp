@@ -86,6 +86,7 @@ void BasePrefetchingDataLayer<Dtype>::LayerSetUp(
   // simultaneous cudaMalloc calls when the main thread is running. In some
   // GPUs this seems to cause failures if we do not so.
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+if(Caffe::phase()==Caffe::TEST){//TODO
   this->prefetch_data_.mutable_cpu_data();
   if (this->output_labels_) {
     this->prefetch_label_.mutable_cpu_data();
@@ -102,12 +103,17 @@ void BasePrefetchingDataLayer<Dtype>::LayerSetUp(
 		  break;
 	  case DataParameter_DB_LMDB:
 		  {
+			  if(rank==0){
+				  this->CreatePrefetchThread();
+				  DLOG(INFO) << "Prefetch initialized.";
+			  }
 			  //////this->CreatePrefetchThread();
 		  }
 		  break;
 	  default:
 		  LOG(FATAL) << "Unknown database backend";
   }
+}
 }
 
 template <typename Dtype>
@@ -137,10 +143,11 @@ void BasePrefetchingDataLayer<Dtype>::Forward_cpu_test(
   // Start a new prefetch thread
   CreatePrefetchThread();
 }
-
+#if 0
 template <typename Dtype>
 void BasePrefetchingDataLayer<Dtype>::Forward_cpu_root(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top,const int source) {
+#if 0
        switch (this->layer_param_.data_param().backend()){
         case DataParameter_DB_LEVELDB:
         {
@@ -160,34 +167,24 @@ void BasePrefetchingDataLayer<Dtype>::Forward_cpu_root(const vector<Blob<Dtype>*
         default:
     LOG(FATAL) << "Unknown database backend";
         }
+#endif
 }
-
+#endif
 template <typename Dtype>
 void BasePrefetchingDataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
-      vector<Blob<Dtype>*>* top) {
-       switch (this->layer_param_.data_param().backend()){
-        case DataParameter_DB_LEVELDB:
-        {
+		vector<Blob<Dtype>*>* top) {
+#ifndef ASYNCTRAN
 	MPI_Status status;
-        status.MPI_ERROR=0;
+	status.MPI_ERROR=0;
 	caffe_mpi_recv<Dtype>((*top)[0]->mutable_cpu_data(),prefetch_data_.count(),
-                0,TAG_DATA_OUT,MPI_COMM_WORLD,&status);
+			0,TAG_DATA_OUT,MPI_COMM_WORLD,&status);
 	DLOG(INFO)<<"Recv Dataout status "<<status.MPI_ERROR;
 	if (this->output_labels_) {
 		caffe_mpi_recv<Dtype>((*top)[1]->mutable_cpu_data(),prefetch_label_.count(),
-                0,TAG_DATA_OUT_IF,MPI_COMM_WORLD,&status);
-	DLOG(INFO)<<"Recv Dataout if status "<<status.MPI_ERROR;
+				0,TAG_DATA_OUT_IF,MPI_COMM_WORLD,&status);
+		DLOG(INFO)<<"Recv Dataout if status "<<status.MPI_ERROR;
 	}
-}
-        break;
-        case DataParameter_DB_LMDB:
-        {
-        Forward_cpu_test(bottom,top);
-        }
-        break;
-        default:
-    LOG(FATAL) << "Unknown database backend";
-        }
+#endif
 }
 
 #ifdef CPU_ONLY

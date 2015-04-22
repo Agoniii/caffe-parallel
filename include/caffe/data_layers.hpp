@@ -85,14 +85,14 @@ class BasePrefetchingDataLayer :
       vector<Blob<Dtype>*>* top);
   virtual void Forward_cpu_test(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
-  virtual void Forward_cpu_root(const vector<Blob<Dtype>*>& bottom,
-      vector<Blob<Dtype>*>* top,const int source);
+//  virtual void Forward_cpu_root(const vector<Blob<Dtype>*>& bottom,
+//      vector<Blob<Dtype>*>* top,const int source);
   virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
   virtual void Forward_gpu_test(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top);
-  virtual void Forward_gpu_root(const vector<Blob<Dtype>*>& bottom,
-      vector<Blob<Dtype>*>* top, const int source);
+//  virtual void Forward_gpu_root(const vector<Blob<Dtype>*>& bottom,
+//      vector<Blob<Dtype>*>* top, const int source);
 
   virtual void CreatePrefetchThread();
   virtual void JoinPrefetchThread();
@@ -121,6 +121,12 @@ class DataLayer : public BasePrefetchingDataLayer<Dtype> {
   virtual inline int MinTopBlobs() const { return 1; }
   virtual inline int MaxTopBlobs() const { return 2; }
 
+	void reshapeData(Blob<Dtype>& lprefetch_data_ , Blob<Dtype>& lprefetch_label_);
+  void ReadData(shared_ptr<leveldb::Iterator>& liter_, MDB_cursor *lmdb_cursor_,
+			 Blob<Dtype>& lprefetch_data_, Blob<Dtype>& lprefetch_label_);
+	void getLeveldbIter(shared_ptr<leveldb::Iterator>& iter_);
+	void getMdbCursor(MDB_cursor** cursor);
+	bool getOutputLabel();
  protected:
   virtual void InternalThreadEntry();
 

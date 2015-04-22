@@ -15,8 +15,6 @@
 #include <string>
 #include <utility>  // pair
 #include <vector>
-#include <pthread.h>
-#include <semaphore.h>
 
 #include "caffe/util/device_alternate.hpp"
 /////TAG define/////////////
@@ -29,6 +27,14 @@
 #define TAG_UPDATE_1    (7)
 ////////////////////////////
 
+//#define DIRECTGPU
+//#define ASYNCTRAN
+//#define TDEBUG
+#ifdef TDEBUG
+#define DBGPRT(str) str
+#else
+#define DBGPRT(str)
+#endif
 // gflags 2.1 issue: namespace google was changed to gflags without warning.
 // Luckily we will be able to use GFLAGS_GFAGS_H_ to detect if it is version
 // 2.1. If yes , we will add a temporary solution to redirect the namespace.

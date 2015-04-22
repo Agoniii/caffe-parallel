@@ -11,6 +11,8 @@
 #include "caffe/util/device_alternate.hpp"
 #include "caffe/util/mpi.hpp"
 
+#include "leveldb/db.h"
+#include "lmdb.h"
 namespace caffe {
 
 /**
@@ -155,8 +157,8 @@ class Layer {
    *
    * Your layer should implement Forward_cpu and (optionally) Forward_gpu.
    */
-  inline Dtype ForwardRoot(const vector<Blob<Dtype>*>& bottom,
-      vector<Blob<Dtype>*>* top,const int source);
+//  inline Dtype ForwardRoot(const vector<Blob<Dtype>*>& bottom,
+//      vector<Blob<Dtype>*>* top,const int source);
   /**
    * @brief Given the top blob error gradients, compute the bottom blob error
    *        gradients.
@@ -335,6 +337,12 @@ class Layer {
   }
 
 
+	virtual void reshapeData(Blob<Dtype>& lprefetch_data_ , Blob<Dtype>& lprefetch_label_){;}
+	virtual void ReadData(shared_ptr<leveldb::Iterator>& liter_, MDB_cursor *lmdb_cursor_,
+					 Blob<Dtype>& lprefetch_data_, Blob<Dtype>& lprefetch_label_){;}
+	virtual void getLeveldbIter(shared_ptr<leveldb::Iterator>& iter_){;}
+	virtual void getMdbCursor(MDB_cursor** cursor){;}
+	virtual bool getOutputLabel(){return false;}
  protected:
   /** The protobuf that stores the layer parameters */
   LayerParameter layer_param_;
@@ -354,8 +362,8 @@ class Layer {
   virtual void Forward_cpu_test(const vector<Blob<Dtype>*>& bottom,
       vector<Blob<Dtype>*>* top){;};
   /** @brief Using the CPU device, compute the layer output. */
-  virtual void Forward_cpu_root(const vector<Blob<Dtype>*>& bottom,
-      vector<Blob<Dtype>*>* top,int source=0) {;}
+//  virtual void Forward_cpu_root(const vector<Blob<Dtype>*>& bottom,
+//      vector<Blob<Dtype>*>* top,int source=0) {;}
   /**
    * @brief Using the GPU device, compute the layer output.
    *        Fall back to Forward_cpu() if unavailable.
@@ -374,6 +382,7 @@ class Layer {
     // LOG(WARNING) << "Using CPU code as backup.";
     return Forward_cpu_test(bottom, top);
   }
+#if 0
   /**
    * @brief Using the GPU device, compute the layer output.
    *        Fall back to Forward_cpu_root() if unavailable.
@@ -383,7 +392,7 @@ class Layer {
     // LOG(WARNING) << "Using CPU code as backup.";
     return Forward_cpu_root(bottom, top, source);
   }
-
+#endif
   /**
    * @brief Using the CPU device, compute the gradients for any parameters and
    *        for the bottom blobs if propagate_down is true.
@@ -542,7 +551,7 @@ inline Dtype Layer<Dtype>::ForwardTest(const vector<Blob<Dtype>*>& bottom,
   }
   return loss;
 }
-
+#if 0
 template <typename Dtype>
 inline Dtype Layer<Dtype>::ForwardRoot(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top,const int source) {
@@ -559,7 +568,7 @@ inline Dtype Layer<Dtype>::ForwardRoot(const vector<Blob<Dtype>*>& bottom,
   }
   return loss;
 }
-
+#endif
 template <typename Dtype>
 inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,

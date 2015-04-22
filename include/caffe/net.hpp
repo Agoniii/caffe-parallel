@@ -12,6 +12,7 @@
 #include "caffe/layer.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/mpi.hpp"
+#include "caffe/util/semaphores.hpp"
 
 namespace caffe {
 
@@ -36,7 +37,7 @@ class Net {
    *
    * You can get the input blobs using input_blobs().
    */
-  const vector<Blob<Dtype>*>& ForwardPrefilled(Dtype* loss = NULL);
+  const vector<Blob<Dtype>*>& ForwardPrefilled(Dtype* loss = NULL,semaphore* semNext=NULL);
 
   /**
    * @brief Run Forward with the input Blob%s already fed separately.
@@ -50,7 +51,7 @@ class Net {
    *
    * You can get the input blobs using input_blobs().
    */
-  const vector<Blob<Dtype>*>& ForwardPrefilledRoot(Dtype* loss = NULL, const int source=0);
+//  const vector<Blob<Dtype>*>& ForwardPrefilledRoot(Dtype* loss = NULL, const int source=0);
 
   /**
    * The From and To variants of Forward and Backward operate on the
@@ -60,16 +61,18 @@ class Net {
    * the middle may be incorrect if all of the layers of a fan-in are not
    * included.
    */
-  Dtype ForwardFromTo(int start, int end);
+  Dtype ForwardFromTo(int start, int end,semaphore* semNext=NULL);
   Dtype ForwardFrom(int start);
   Dtype ForwardTo(int end);
   /// @brief Run forward using a set of bottom blobs, and return the result.
   const vector<Blob<Dtype>*>& Forward(const vector<Blob<Dtype>* > & bottom,
-      Dtype* loss = NULL);
+      Dtype* loss = NULL, semaphore* semNext=NULL);
   const vector<Blob<Dtype>*>& ForwardTest(const vector<Blob<Dtype>* > & bottom,
       Dtype* loss = NULL);
+#if 0
   const vector<Blob<Dtype>*>& ForwardRoot(const vector<Blob<Dtype>* > & bottom,
       Dtype* loss = NULL, const int source=0);
+#endif
   /**
    * @brief Run forward using a serialized BlobProtoVector and return the
    *        result as a serialized BlobProtoVector
@@ -86,6 +89,7 @@ class Net {
   void BackwardFrom(int start);
   void BackwardTo(int end);
 
+	vector<Blob<Dtype>*>* getTopPointer();
   /**
    * @brief Reshape all layers from bottom to top.
    *
@@ -94,19 +98,22 @@ class Net {
    */
   void Reshape();
 
-  Dtype ForwardBackward(const vector<Blob<Dtype>* > & bottom) {
+  Dtype ForwardBackward(const vector<Blob<Dtype>* > & bottom,semaphore* semNext = NULL) {
     Dtype loss;
-    Forward(bottom, &loss);
+DBGPRT(LOG(INFO)<<"START FORWARD");
+    Forward(bottom, &loss,semNext);
+DBGPRT(LOG(INFO)<<"FIN FORWARD AND START BACKWARD");
     Backward();
+DBGPRT(LOG(INFO)<<"FIN BACKWARD");
     return loss;
   }
-
+#if 0
   Dtype ForwardBackwardRoot(const vector<Blob<Dtype>* > & bottom, const int source) {
     Dtype loss;
     ForwardRoot(bottom, &loss,source);
     return loss;
   }
-
+#endif
   /// @brief Updates the network weights based on the diff values computed.
   void Update();
 

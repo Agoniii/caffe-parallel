@@ -44,7 +44,7 @@ int caffe_mpi_send(void *buf, int count, MPI_Datatype datatype, int dest, int ta
 template<>
 int caffe_mpi_recv<float>(void *buf, int count, int dest, int tag,
                     MPI_Comm comm, MPI_Status *status) {
-//	LOG(INFO)<<"MPI_RECV "<<buf<<" "<<count<<" "<<dest<<" "<<tag<<" ";
+	//LOG(INFO)<<"MPI_RECV "<<buf<<" "<<count<<" "<<dest<<" "<<tag<<" ";
 	int ret=MPI_Recv(buf, count, MPI_FLOAT, dest, tag,
                     comm, status);
 	return ret;
@@ -78,6 +78,22 @@ int caffe_mpi_isend<double>(void *buf, int count, int dest, int tag,
 int caffe_mpi_isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
                     MPI_Comm comm, MPI_Request *req) {
 	return MPI_Isend(buf, count, datatype, dest, tag,comm, req);
+}
+template <>
+int caffe_mpi_ssend<float>(void *buf, int count, int dest, int tag,
+                    MPI_Comm comm) {
+	return MPI_Ssend(buf, count, MPI_FLOAT, dest, tag,comm);
+}
+
+template <>
+int caffe_mpi_ssend<double>(void *buf, int count, int dest, int tag,
+                    MPI_Comm comm) {
+	return MPI_Ssend(buf, count, MPI_DOUBLE, dest, tag,comm);
+}
+
+int caffe_mpi_ssend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+                    MPI_Comm comm) {
+	return MPI_Ssend(buf, count, datatype, dest, tag,comm);
 }
 
 }  // namespace caffe

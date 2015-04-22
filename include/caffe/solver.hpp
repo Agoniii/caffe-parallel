@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "caffe/net.hpp"
+#include "caffe/bloblite.hpp"
 
 namespace caffe {
 
@@ -31,6 +32,7 @@ class Solver {
   inline const vector<shared_ptr<Net<Dtype> > >& test_nets() {
     return test_nets_;
   }
+	inline const SolverParameter param(){return param_;}
 
   virtual void ComputeValueServer();
   virtual void ComputeValueClient(int tid);
@@ -42,6 +44,7 @@ class Solver {
   virtual void ComputeUpdateValue() = 0;
   virtual void ComputeUpdateValueClient() = 0;
   virtual void ComputeUpdateValueServerThread() = 0;
+  virtual void ComputeUpdateValueServerThreadGPU() = 0;
   virtual void ComputeUpdateValueClientThread(int& mpi_source,int tid) = 0;
   // The Solver::Snapshot function implements the basic snapshotting utility
   // that stores the learned net. You should implement the SnapshotSolverState()
@@ -66,8 +69,11 @@ class Solver {
 
   int mpi_source;
   int rank;
-  MPI_Datatype mpiTypeDiff;//MPI root
-  MPI_Datatype mpiTypeCpuDiff, mpiTypeCpuData;//MPI clients
+  int childProcessSum;
+  //void * tempDiff;
+  //void * tempDiffGPU;
+  Bloblite<Dtype> *** tempdata;
+  int* flagComputeEndNeedUpdate; 
 
 
   DISABLE_COPY_AND_ASSIGN(Solver);
@@ -101,6 +107,7 @@ class SGDSolver : public Solver<Dtype> {
   // temp maintains other information that might be needed in computation
   //   of gradients/updates and is not needed in snapshots
   virtual void ComputeUpdateValueServerThread();
+  virtual void ComputeUpdateValueServerThreadGPU();
   virtual void ComputeUpdateValueClientThread(int& mpi_source,int tid);
   virtual void GetValue(int &mpi_source,const int tid);
   vector<shared_ptr<Blob<Dtype> > > history_, update_, temp_;
@@ -158,58 +165,5 @@ Solver<Dtype>* GetSolver(const SolverParameter& param) {
 }
 
 }  // namespace caffe
-typedef struct TPRAMA{
-void* layer;
-int tid;
-}tprama;
 
-class lockmutex{
-public:
-        lockmutex(pthread_mutex_t* mut){mutex = mut;lock();};
-        ~lockmutex(){unlock();};
-        void lock(){pthread_mutex_lock(mutex);};
-        void unlock(){pthread_mutex_unlock(mutex);};
-private:
-        pthread_mutex_t *mutex;
-};
-
-class atomInt{
-public:
-        atomInt(int val=0){
-                atomValue=val;
-                pthread_rwlock_init(&rwlockAtom,NULL);
-        };
-        ~atomInt(){
-                pthread_rwlock_destroy(&rwlockAtom);
-        };
-        int getValue(){
-                int ret;
-                pthread_rwlock_rdlock(&rwlockAtom);
-                ret=atomValue;
-                pthread_rwlock_unlock(&rwlockAtom);
-                return ret;
-        }
-        int add(int val){
-                int ret;
-                pthread_rwlock_wrlock(&rwlockAtom);
-                atomValue+=val;
-                ret=atomValue;
-                pthread_rwlock_unlock(&rwlockAtom);
-                return ret;
-        };
-        int sub(int val){
-                int ret;
-                pthread_rwlock_wrlock(&rwlockAtom);
-                atomValue-=val;
-                ret=atomValue;
-                pthread_rwlock_unlock(&rwlockAtom);
-                return ret;
-        };
-private:
-        int atomValue;
-        pthread_rwlock_t rwlockAtom;
-};
-
-#define WAIT_SEC (3)
-#define WAIT_USEC (0)
 #endif  // CAFFE_OPTIMIZATION_SOLVER_HPP_

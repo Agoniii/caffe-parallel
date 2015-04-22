@@ -32,6 +32,12 @@ int caffe_mpi_isend(void *buf, int count, int dest, int tag,
 int caffe_mpi_isend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
                     MPI_Comm comm, MPI_Request *req);
 
+template <typename Dtype>
+int caffe_mpi_ssend(void *buf, int count, int dest, int tag,
+                    MPI_Comm comm);
+
+int caffe_mpi_ssend(void *buf, int count, MPI_Datatype datatype, int dest, int tag,
+                    MPI_Comm comm);
 }  // namespace caffe
 
 #endif  // CAFFE_UTIL_MPI_H_

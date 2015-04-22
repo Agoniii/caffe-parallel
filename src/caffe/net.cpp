@@ -7,7 +7,6 @@
 
 #include "caffe/common.hpp"
 #include "caffe/layer.hpp"
-#include "caffe/net.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/insert_splits.hpp"
 #include "caffe/util/io.hpp"
@@ -16,6 +15,7 @@
 
 #include "caffe/test/test_caffe_main.hpp"
 
+#include "caffe/net.hpp"
 namespace caffe {
 
 template <typename Dtype>
@@ -500,7 +500,11 @@ void Net<Dtype>::GetLearningRateAndWeightDecay() {
 }
 
 template <typename Dtype>
-Dtype Net<Dtype>::ForwardFromTo(int start, int end) {
+vector<Blob<Dtype>*>* Net<Dtype>::getTopPointer(){
+	return &top_vecs_[0];//TODO need check if data layer 
+}
+template <typename Dtype>
+Dtype Net<Dtype>::ForwardFromTo(int start, int end,semaphore* semNext) {
   CHECK_GE(start, 0);
   CHECK_LT(end, layers_.size());
   Dtype loss = 0;
@@ -508,6 +512,18 @@ Dtype Net<Dtype>::ForwardFromTo(int start, int end) {
     // LOG(ERROR) << "Forwarding " << layer_names_[i];
     layers_[i]->taskiter = taskiter;
     layers_[i]->Reshape(bottom_vecs_[i], &top_vecs_[i]);
+//TODO 
+#if 0
+			for(int k = 0; k < layers_[i]->blobs().size(); ++k){
+				if(j == params_.size()-1)
+					caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
+							0,TAG_UPDATE_1,MPI_COMM_WORLD,&req[j]);//modify to recv
+				else
+					caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
+							0,TAG_UPDATE,MPI_COMM_WORLD,&req[j]);//modify to recv
+				--j;
+			}
+#endif
     Dtype layer_loss = layers_[i]->Forward(bottom_vecs_[i], &top_vecs_[i]);
     loss += layer_loss;
     if (debug_info_) { ForwardDebugInfo(i); }
@@ -526,27 +542,12 @@ Dtype Net<Dtype>::ForwardTo(int end) {
 }
 
 template <typename Dtype>
-const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilled(Dtype* loss) {
+const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilled(Dtype* loss,semaphore* semNext) {
 	if (loss != NULL) {
 		*loss=0;
-		if(rank==0){
-#if 1
-			for (int i = 0; i <= layers_.size()-1; ++i) {
-			if(layer_types_[i]==LayerParameter_LayerType_DATA){
-				layers_[i]->Reshape(bottom_vecs_[i], &top_vecs_[i]);
-				Dtype layer_loss = layers_[i]->Forward(bottom_vecs_[i], &top_vecs_[i]);
-				*loss += layer_loss;
-			}
-#else
-			*loss = layers_[0]->Forward(bottom_vecs_[0], &top_vecs_[0]);
-#endif
-			if (debug_info_) { ForwardDebugInfo(i); }
-			}
-		}else{
-			*loss = ForwardFromTo(0, layers_.size() - 1);
-		}
+		*loss = ForwardFromTo(0, layers_.size() - 1,semNext);
 	} else {
-		ForwardFromTo(0, layers_.size() - 1);
+		ForwardFromTo(0, layers_.size() - 1,semNext);
 	}
 	return net_output_blobs_;
 }
@@ -554,13 +555,15 @@ template <typename Dtype>
 const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilledTest(Dtype* loss) {
   if (loss != NULL) {
 	layers_[0]->Reshape(bottom_vecs_[0], &top_vecs_[0]);
-	if(Caffe::phase() == Caffe::TRAIN)layers_[0]->taskiter = taskiter;
+	if(Caffe::phase() == Caffe::TRAIN)
+		layers_[0]->taskiter = taskiter;
 	Dtype layer_loss = layers_[0]->ForwardTest(bottom_vecs_[0], &top_vecs_[0]);//Only for data layer
 	*loss = ForwardFromTo(1, layers_.size() - 1);
 	*loss += layer_loss;
   }
   return net_output_blobs_;
 }
+#if 0
 template <typename Dtype>
 const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilledRoot(Dtype* loss,const int source) {
 	if (loss != NULL) {
@@ -577,6 +580,7 @@ const vector<Blob<Dtype>*>& Net<Dtype>::ForwardPrefilledRoot(Dtype* loss,const i
 	}
 	return net_output_blobs_;
 }
+#endif
 template <typename Dtype>
 const vector<Blob<Dtype>*>& Net<Dtype>::ForwardTest(
     const vector<Blob<Dtype>*> & bottom, Dtype* loss) {
@@ -586,6 +590,7 @@ for (int i = 0; i < bottom.size(); ++i) {
   }
   return ForwardPrefilledTest(loss);
 }
+#if 0
 template <typename Dtype>
 const vector<Blob<Dtype>*>& Net<Dtype>::ForwardRoot(
     const vector<Blob<Dtype>*> & bottom, Dtype* loss,const int source) {
@@ -596,14 +601,15 @@ const vector<Blob<Dtype>*>& Net<Dtype>::ForwardRoot(
   return ForwardPrefilledRoot(loss,source);
 
 }
+#endif
 template <typename Dtype>
 const vector<Blob<Dtype>*>& Net<Dtype>::Forward(
-    const vector<Blob<Dtype>*> & bottom, Dtype* loss) {
+    const vector<Blob<Dtype>*> & bottom, Dtype* loss,semaphore* semNext) {
   // Copy bottom to internal bottom
   for (int i = 0; i < bottom.size(); ++i) {
     net_input_blobs_[i]->CopyFrom(*bottom[i]);
   }
-  return ForwardPrefilled(loss);
+  return ForwardPrefilled(loss,semNext);
 }
 
 template <typename Dtype>
@@ -632,24 +638,43 @@ void Net<Dtype>::BackwardFromTo(int start, int end) {
   CHECK_GE(end, 0);
   CHECK_LT(start, layers_.size());
 	int j = params_.size()-1;
-	MPI_Request *req=new MPI_Request[params_.size()];
+//	MPI_Request *req=new MPI_Request[params_.size()];
+  MPI_Request req;
+//MPI_Request req[params_.size()];
   for (int i = start; i >= end; --i) {
     if (layer_need_backward_[i]) {
       layers_[i]->Backward(
           top_vecs_[i], bottom_need_backward_[i], &bottom_vecs_[i]);
       if (debug_info_) { BackwardDebugInfo(i); }
 			for(int k = 0; k < layers_[i]->blobs().size(); ++k){
+#ifdef DIRECTGPU
+				if(j == params_.size()-1)
+				//	caffe_mpi_isend<Dtype>(params_[j]->mutable_gpu_diff(),params_[j]->count(),
+							//0,TAG_UPDATE_1,MPI_COMM_WORLD,&req);
+				///			0,TAG_UPDATE_1,MPI_COMM_WORLD,&req[j]);
+					caffe_mpi_send<Dtype>(params_[j]->mutable_gpu_diff(),params_[j]->count(),
+							0,TAG_UPDATE_1,MPI_COMM_WORLD);
+				else
+			//		caffe_mpi_isend<Dtype>(params_[j]->mutable_gpu_diff(),params_[j]->count(),
+							//0,TAG_UPDATE,MPI_COMM_WORLD,&req);
+			///				0,TAG_UPDATE,MPI_COMM_WORLD,&req[j]);
+					caffe_mpi_send<Dtype>(params_[j]->mutable_gpu_diff(),params_[j]->count(),
+							0,TAG_UPDATE,MPI_COMM_WORLD);
+#else
 				if(j == params_.size()-1)
 					caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
-							0,TAG_UPDATE_1,MPI_COMM_WORLD,&req[j]);
+							0,TAG_UPDATE_1,MPI_COMM_WORLD,&req);
+							//0,TAG_UPDATE_1,MPI_COMM_WORLD,&req[j]);
 				else
 					caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
-							0,TAG_UPDATE,MPI_COMM_WORLD,&req[j]);
+							0,TAG_UPDATE,MPI_COMM_WORLD,&req);
+							//0,TAG_UPDATE,MPI_COMM_WORLD,&req[j]);
+#endif
 				--j;
 			}
     }
   }
-  //MPI_Waitall(params_.size(),req,MPI_STATUSES_IGNORE);
+////  MPI_Waitall(params_.size(),req,MPI_STATUSES_IGNORE);
 }
 
 template <typename Dtype>

@@ -20,9 +20,11 @@ void BasePrefetchingDataLayer<Dtype>::Forward_gpu_test(
   CreatePrefetchThread();
 }
 
+#if 0
 template <typename Dtype>
 void BasePrefetchingDataLayer<Dtype>::Forward_gpu_root(
     const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top, const int source) {
+#if 0
        switch (this->layer_param_.data_param().backend()){
 	case DataParameter_DB_LEVELDB:
 	{
@@ -42,36 +44,38 @@ void BasePrefetchingDataLayer<Dtype>::Forward_gpu_root(
 	default:
     LOG(FATAL) << "Unknown database backend";
 	}
+#endif
 }
+#endif
 
 template <typename Dtype>
 void BasePrefetchingDataLayer<Dtype>::Forward_gpu(
-    const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
-       switch (this->layer_param_.data_param().backend()){
-	case DataParameter_DB_LEVELDB:
-	{
+		const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
+#ifndef ASYNCTRAN
+DBGPRT(LOG(INFO)<<"RECV DATA");
 	MPI_Status status;
 	status.MPI_ERROR=0;
-	caffe_mpi_recv<Dtype>((*top)[0]->mutable_cpu_data(),prefetch_data_.count(),
-                0,TAG_DATA_OUT,MPI_COMM_WORLD,&status);
+#ifdef DIRECTGPU
+	caffe_mpi_recv<Dtype>((*top)[0]->mutable_gpu_data(),(*top)[0]->count(),
+			0,TAG_DATA_OUT,MPI_COMM_WORLD,&status);
 	DLOG(INFO)<<"Recv Dataout status "<<status.MPI_ERROR;
-	caffe_copy(prefetch_data_.count(),(*top)[0]->mutable_cpu_data(),(*top)[0]->mutable_gpu_data());//TODO Is this code needed?
 	if (this->output_labels_) {
-		caffe_mpi_recv<Dtype>((*top)[1]->mutable_cpu_data(),prefetch_label_.count(),
-                0,TAG_DATA_OUT_IF,MPI_COMM_WORLD,&status);
+		caffe_mpi_recv<Dtype>((*top)[1]->mutable_gpu_data(),(*top)[1]->count(),
+				0,TAG_DATA_OUT_IF,MPI_COMM_WORLD,&status);
 		DLOG(INFO)<<"Recv Dataout status "<<status.MPI_ERROR;
-	caffe_copy(prefetch_label_.count(),(*top)[1]->mutable_cpu_data(),(*top)[1]->mutable_gpu_data());//TODO Is this code needed?
 	}
+#else
+	caffe_mpi_recv<Dtype>((*top)[0]->mutable_cpu_data(),(*top)[0]->count(),
+			0,TAG_DATA_OUT,MPI_COMM_WORLD,&status);
+	DLOG(INFO)<<"Recv Dataout status "<<status.MPI_ERROR;
+	if (this->output_labels_) {
+		caffe_mpi_recv<Dtype>((*top)[1]->mutable_cpu_data(),(*top)[1]->count(),
+				0,TAG_DATA_OUT_IF,MPI_COMM_WORLD,&status);
+		DLOG(INFO)<<"Recv Dataout status "<<status.MPI_ERROR;
 	}
-	break;
-	case DataParameter_DB_LMDB:
-	{
-	Forward_gpu_test(bottom,top);
-	}
-	break;
-	default:
-    LOG(FATAL) << "Unknown database backend";
-	}
+#endif
+DBGPRT(LOG(INFO)<<"RECV DATA FIN");
+#endif
 }
 INSTANTIATE_CLASS(BasePrefetchingDataLayer);
 
