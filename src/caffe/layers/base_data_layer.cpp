@@ -192,6 +192,12 @@ void BasePrefetchingDataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
 
 #ifdef CPU_ONLY
 STUB_GPU_FORWARD(BasePrefetchingDataLayer, Forward);
+template <typename Dtype> \
+void BasePrefetchingDataLayer<Dtype>::Forward_gpu_test(const vector<Blob<Dtype>*>& bottom, \
+		     vector<Blob<Dtype>*>* top) { NO_GPU; }
+template <typename Dtype>
+void BasePrefetchingDataLayer<Dtype>::Forward_cpu_root(const vector<Blob<Dtype>*>& bottom,
+		      vector<Blob<Dtype>*>* top,const int source) { NO_GPU;}
 #endif
 
 INSTANTIATE_CLASS(BaseDataLayer);
