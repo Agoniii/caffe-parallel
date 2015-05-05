@@ -196,7 +196,7 @@ template <typename Dtype> \
 void BasePrefetchingDataLayer<Dtype>::Forward_gpu_test(const vector<Blob<Dtype>*>& bottom, \
 		     vector<Blob<Dtype>*>* top) { NO_GPU; }
 template <typename Dtype>
-void BasePrefetchingDataLayer<Dtype>::Forward_cpu_root(const vector<Blob<Dtype>*>& bottom,
+void BasePrefetchingDataLayer<Dtype>::Forward_gpu_root(const vector<Blob<Dtype>*>& bottom,
 		      vector<Blob<Dtype>*>* top,const int source) { NO_GPU;}
 #endif
 
