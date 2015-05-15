@@ -4,7 +4,7 @@
 Overview
 ============================
 caffe* parallel is a faster framework for deep learning, it's forked from 
-BVLC/caffe.(https://github.com/BVLC/caffe ,more details please visit 
+BVLC/caffe (master branch).(https://github.com/BVLC/caffe ,more details please visit 
 http://caffe.berkeleyvision.org).The main achievement of this project is 
 data-parallel via MPI.
 
@@ -19,6 +19,9 @@ Shen,Bo (Inspur) shenbo@inspur.com ; Wang,Yajuan (Inspur) wangyjbj@inspur.com
 
 Changelog:
 ============================
+Ver 0.3(2015):  
+ Static assignment task
+
 Ver 0.2(20150109):  
  Support LMDB now.(tested mnist)  
  Fixed some bugs.  
@@ -31,6 +34,10 @@ Ver 0.1(20141231):
  It's only a simple simple version.We'll as soon as 
 possible to improve it and happy new year!
 
+Known Issues:
+============================
+LMDB
+big data(Like ImageNet)
 TODO List:
 ============================
 <del>1.support <b>LMDB</b></del>  
@@ -38,8 +45,6 @@ TODO List:
 2.performance optimization  
 
 3.large-scale test
-
-4.support Intel® Xeon Phi™Coprocessors  
 
 How to run it
 ============================
@@ -63,7 +68,7 @@ Caffe depends on several software packages.
     Compiler:  
         g++ compiler(we used 4.4.7)  
     MPI compiler and runtime:  
-        Intel MPI (we used 14.0.2.144) / MPICH3 (we used 3.1,CC=gcc,CXX=g++,--enable-threads=multiple)
+        Intel MPI (we used 4.1.3.049) / MPICH3 (we used 3.1,CC=gcc,CXX=g++,--enable-threads=multiple)
     For the Python wrapper  
         Python 2.7, numpy (>= 1.7), boost-provided boost.python  
 
