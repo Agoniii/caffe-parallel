@@ -53,7 +53,7 @@ How to run it
 ----------------------------
 Caffe depends on several software packages.
 
-    CUDA library version(we used 6.0) 6.5, 6.0, 5.5, or 5.0 and the latest driver version for CUDA 6 or 319.* for CUDA 5 (and NOT 331.*)  
+    CUDA library version 7.0 and the latest driver version for CUDA  
     BLAS (we used MKL(14.0.2.144)/ OpenBLAS(r0.2.12))(provided via ATLAS, MKL, or OpenBLAS).  
     OpenCV (we used 2.4.9)(need cmake >=2.8)  
     Boost (we used 1.55)(>= 1.55, although only 1.55 and 1.56 are tested)  
@@ -67,9 +67,9 @@ Caffe depends on several software packages.
     lmdb   
     autoconf(>= 2.4)  
     Compiler:  
-        g++ compiler(we used 4.4.7)  
+        g++ compiler(we used 4.9) must >=4.9 because used C++11  
     MPI compiler and runtime:  
-        Intel MPI (we used 14.0.2.144) / MPICH3 (we used 3.1,CC=gcc,CXX=g++,--enable-threads=multiple)
+        OpenMPI / MVAPICH3 (enable multithreads,enable CUDA)(need INFINIBAND)
     For the Python wrapper  
         Python 2.7, numpy (>= 1.7), boost-provided boost.python  
 
@@ -142,7 +142,7 @@ Acknowledgements
 ============================
 The Caffe* parallel developers would like to thank  
 QiHoo(Zhang,Gang ; Dr.Hu,Jinhui)  
-Nvidia(Dr.Simon See ; Jessy Huan)  
+Nvidia(Dr.Simon See ; Jessy Huan ; Julien Lai ; Joey Wang)  
 for algorithm support and Inspur for guidance during Caffe* parallel development.  
 
 
