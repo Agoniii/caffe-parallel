@@ -647,6 +647,7 @@ void Net<Dtype>::BackwardFromTo(int start, int end) {
           top_vecs_[i], bottom_need_backward_[i], &bottom_vecs_[i]);
       if (debug_info_) { BackwardDebugInfo(i); }
 			for(int k = 0; k < layers_[i]->blobs().size(); ++k){
+params_[j]->mutable_cpu_diff();
 #ifdef DIRECTGPU
 				if(j == params_.size()-1)
 				//	caffe_mpi_isend<Dtype>(params_[j]->mutable_gpu_diff(),params_[j]->count(),
@@ -662,15 +663,21 @@ void Net<Dtype>::BackwardFromTo(int start, int end) {
 							0,TAG_UPDATE,MPI_COMM_WORLD);
 #else
 				if(j == params_.size()-1)
-					caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
-							0,TAG_UPDATE_1,MPI_COMM_WORLD,&req);
+					//caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
+					//		0,TAG_UPDATE_1,MPI_COMM_WORLD,&req);
 							//0,TAG_UPDATE_1,MPI_COMM_WORLD,&req[j]);
+					caffe_mpi_send<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
+							0,TAG_UPDATE_1,MPI_COMM_WORLD);
 				else
-					caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
-							0,TAG_UPDATE,MPI_COMM_WORLD,&req);
+					//caffe_mpi_isend<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
+					//		0,TAG_UPDATE,MPI_COMM_WORLD,&req);
 							//0,TAG_UPDATE,MPI_COMM_WORLD,&req[j]);
+					caffe_mpi_send<Dtype>(params_[j]->mutable_cpu_diff(),params_[j]->count(),
+							0,TAG_UPDATE,MPI_COMM_WORLD);
 #endif
+			//		printf("%dNet:%f\n",j,params_[j]->mutable_cpu_diff()[0]);
 				--j;
+					//for (int param_id = 0; param_id < net_params.size(); ++param_id) 
 			}
     }
   }

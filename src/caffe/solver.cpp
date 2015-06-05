@@ -147,14 +147,18 @@ namespace caffe {
 		}
 	template <typename Dtype>
 		void ComputeValueThreadServer( Solver<Dtype>* layer, const int childProcessSum) {
+		bool waitStatus;
 			while(true){
 				if(undoneIter <= 0)break;
 				{
+		waitStatus=false;
 					unique_lock<mutex> lk(mutexUpdateWeight);
 #if 1
 					DBGPRT(LOG(INFO)<<"WAIT "<<currentUpdateCount);
-					condUpdateWeight.wait_for(lk,chrono::seconds(layer->param().timeout_sec()),
+					waitStatus=condUpdateWeight.wait_for(lk,chrono::seconds(layer->param().timeout_sec()),
 							[=](){return currentUpdateCount >= childProcessSum;});
+				if(waitStatus==false)
+					LOG(INFO)<<"Timeout "<<currentUpdateCount;
 #else
 					condUpdateWeight.wait(lk,[=](){return currentUpdateCount >= childProcessSum || currentUpdateCount >= undoneIter;});//need test
 #endif
@@ -382,6 +386,7 @@ namespace caffe {
 		}
 	template <typename Dtype>
 		void SGDSolver<Dtype>::ComputeUpdateValueServerThreadGPU(){
+#ifndef CPU_ONLY
 			vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
 			vector<float>& net_params_lr = this->net_->params_lr();
 			vector<float>& net_params_weight_decay = this->net_->params_weight_decay();
@@ -458,6 +463,7 @@ namespace caffe {
 				}
 			}
 			DBGPRT(LOG(INFO)<<"666");
+#endif
 		}
 	template <typename Dtype>
 		void ComputeValueThreadClient(Solver<Dtype>* layer, const int tid, const int endNum) {
@@ -479,6 +485,7 @@ namespace caffe {
 			flagComputeEndNeedUpdate[tid-1]=0;
 			vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
 			for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+tempdata[tid-1][param_id]->mutable_cpu_data();
 #ifdef DIRECTGPU
 				caffe_mpi_send<Dtype>(tempdata[tid-1][param_id]->mutable_gpu_data(),tempdata[tid-1][param_id]->count(),
 						tid,TAG_NET_OUT,MPI_COMM_WORLD);
@@ -722,7 +729,7 @@ namespace caffe {
 #ifdef ASYNCTRAN
 				semaphore semRead;
 				semaphore semNext;
-				thread threadRead(SlaveReadData<Dtype>,net_,endNum,&semRead,&semNext);//////
+				thread threadReads(SlaveReadData<Dtype>,net_,endNum,&semRead,&semNext);//////
 #endif
 				for(int i=startNum; i< endNum; ++i){
 					MPI_Status status;
@@ -788,7 +795,7 @@ namespace caffe {
 					}
 				}
 #ifdef ASYNCTRAN
-				threadRead.join();//////
+				threadReads.join();//////
 #endif
 			}
 			MPI_Barrier(MPI_COMM_WORLD);
@@ -1348,6 +1355,7 @@ namespace caffe {
 			for (int param_id = net_params.size()-1; param_id >= 0; --param_id) {
 				memset(&status,0,sizeof(status));
 //assert(net_params[param_id]->count()!=this->tempdata[tid-1][param_id]->count());
+
 #ifdef DIRECTGPU
 				if(param_id==net_params.size()-1){
 					caffe_mpi_recv<Dtype>(this->tempdata[tid-1][param_id]->mutable_gpu_data(),net_params[param_id]->count(),
@@ -1365,6 +1373,7 @@ namespace caffe {
 							tid,TAG_UPDATE,MPI_COMM_WORLD,&status);
 				}
 #endif
+			//printf("%dSolver:%f\n",param_id,this->tempdata[tid-1][param_id]->mutable_cpu_data()[0]);
 			}
 
 			{
