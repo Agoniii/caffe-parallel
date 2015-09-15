@@ -1,6 +1,8 @@
 ﻿caffe* parallel 
 ============================
-
+Declaration
+============================
+I have already left office from Inspur, so after Sept.1,2015 ，this project is personal project, if you want to know newest progress with Inspur version, please contact them.
 Overview
 ============================
 caffe* parallel is a faster framework for deep learning, it's forked from 
@@ -15,7 +17,7 @@ this version does not support matlab.
 
 Author
 ============================
-Shen,Bo (Inspur) shenbo@inspur.com ; Wang,Yajuan (Inspur) wangyjbj@inspur.com
+Shen,Bo <del>(Inspur) shenbo@inspur.com</del> ; Wang,Yajuan (Inspur) wangyjbj@inspur.com
 
 Changelog:
 ============================
